@@ -1,4 +1,4 @@
-package com.example.cup_of_zion
+package com.cup_of_zion
 
 import io.flutter.embedding.android.FlutterActivity
 

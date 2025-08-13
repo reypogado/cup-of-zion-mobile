@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:cup_of_zion/screens/transaction_records/transaction_records_screen.dart';
+import 'package:cup_of_zion/services/sync_service.dart';
 import 'package:flutter/material.dart';
 import 'menu/menu_screen.dart';
 import 'cart/cart_screen.dart';
@@ -16,8 +20,28 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const MenuScreen(),
     const CartScreen(),
+    const TransactionRecordsScreen(),
     const SettingsScreen(),
   ];
+
+  Timer? _syncTimer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Start periodic sync every 30 seconds
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      SyncService.syncTransactions();
+    });
+  }
+
+  @override
+  void dispose() {
+    // ❌ Cancel timer to prevent memory leaks
+    _syncTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +64,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart_outlined),
             label: 'Cart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.my_library_books_rounded),
+            label: 'Records',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),

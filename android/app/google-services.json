@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "554365836836",
+    "project_id": "coz-coffee",
+    "storage_bucket": "coz-coffee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:554365836836:android:421cf2cbc0e3b4d683c2b1",
+        "android_client_info": {
+          "package_name": "com.cup_of_zion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCt3pfgxNQwA1I1KmjHb4egOaHdr_XIfXo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

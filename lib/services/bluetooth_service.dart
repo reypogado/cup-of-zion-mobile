@@ -23,77 +23,93 @@ class BluetoothPrinterService {
     return prefs.getString(_printerMacKey);
   }
 
-  Future<void> printReceipt(List<CartItem> items) async {
-    // Reconnect to the saved printer
-    final savedMac = await getSavedPrinterMac();
-    if (savedMac == null) {
-      throw Exception("No saved printer");
+  Future<void> printReceipt(
+  List<CartItem> items, {
+  String? customerName,
+  String? referenceNumber,
+}) async {
+  final savedMac = await getSavedPrinterMac();
+  if (savedMac == null) throw Exception("No saved printer");
+
+  final isConnected = await PrintBluetoothThermal.connectionStatus;
+  if (!isConnected) {
+    final connected = await PrintBluetoothThermal.connect(macPrinterAddress: savedMac);
+    if (!connected) throw Exception("Failed to connect to printer");
+  }
+
+  List<int> bytes = [];
+
+  final ByteData data = await rootBundle.load('assets/icon/app_icon_light.png');
+  final Uint8List imageBytes = data.buffer.asUint8List();
+  final img.Image? logo = img.decodeImage(imageBytes);
+
+  final profile = await CapabilityProfile.load();
+  final generator = Generator(PaperSize.mm58, profile);
+
+  if (logo != null) {
+    final img.Image resized = img.copyResize(logo, width: 200);
+    bytes += generator.image(resized);
+  }
+
+  bytes += generator.feed(1);
+
+  if (customerName != null && customerName.trim().isNotEmpty) {
+    bytes += generator.text('Customer: $customerName',
+        styles: const PosStyles(align: PosAlign.center, bold: true));
+  }
+
+  if (referenceNumber != null && referenceNumber.trim().isNotEmpty) {
+    bytes += generator.text('Ref #: $referenceNumber',
+        styles: const PosStyles(align: PosAlign.center, bold: true));
+  }
+
+  bytes += generator.text('Date: ${DateTime.now().toString().substring(0, 16)}');
+  bytes += generator.text('-----------------------------');
+
+  for (var item in items) {
+    final lineTotal = item.price * item.quantity;
+    String itemTitle = item.name;
+    List<String> tags = [];
+
+    if (item.temperature != 'none') tags.add(item.temperature);
+    if (item.milk != 'none') tags.add(item.milk == 'oat' ? 'oat milk' : item.milk);
+    if (item.size.isNotEmpty) tags.add(item.size);
+
+    if (tags.isNotEmpty) {
+      itemTitle += ' (${tags.join(', ')})';
     }
 
-    final isConnected = await PrintBluetoothThermal.connectionStatus;
-    if (!isConnected) {
-      final connected = await PrintBluetoothThermal.connect(
-        macPrinterAddress: savedMac,
-      );
-      if (!connected) throw Exception("Failed to connect to printer");
-    }
-
-    List<int> bytes = [];
-
-    // Load and decode logo
-    final ByteData data = await rootBundle.load('assets/icon/app_icon_light.png');
-    final Uint8List imageBytes = data.buffer.asUint8List();
-    final img.Image? logo = img.decodeImage(imageBytes);
-
-    // Generate ESC/POS bytes
-    final profile = await CapabilityProfile.load();
-    final generator = Generator(PaperSize.mm58, profile);
-
-    if (logo != null) {
-      // Resize to a safe width (e.g. 200px), keep aspect ratio
-      final img.Image resized = img.copyResize(logo, width: 200);
-      bytes += generator.image(resized);
-    }
-
-
-    // bytes += generator.feed(1);
-    bytes += generator.text('Date: ${DateTime.now()}');
-    bytes += generator.text('-----------------------------');
-
-    for (var item in items) {
-      bytes += generator.row([
-        PosColumn(text: item.name, width: 10),
-        PosColumn(
-          text: 'x${item.quantity}',
-          width: 2,
-          styles: const PosStyles(align: PosAlign.right),
-        ),
-      ]);
-    }
-
-    bytes += generator.text('-----------------------------');
-    final total = items.fold<double>(
-      0.0,
-      (sum, i) => sum + i.price * i.quantity,
-    );
+    bytes += generator.text(itemTitle, styles: const PosStyles(bold: true));
     bytes += generator.row([
-      PosColumn(text: 'TOTAL', width: 6, styles: const PosStyles(bold: true)),
+      PosColumn(text: '${item.quantity} x ${item.price.toStringAsFixed(2)}', width: 6),
       PosColumn(
-        text: 'Php ${total.toStringAsFixed(2)}',
+        text: 'Php ${lineTotal.toStringAsFixed(2)}',
         width: 6,
-        styles: const PosStyles(align: PosAlign.right, bold: true),
+        styles: const PosStyles(align: PosAlign.right),
       ),
     ]);
-
-    bytes += generator.feed(1);
-    bytes += generator.text(
-      'Thank you!',
-      styles: const PosStyles(align: PosAlign.center),
-    );
-    bytes += generator.feed(2);
-
-    // Send to printer
-    final result = await PrintBluetoothThermal.writeBytes(bytes);
-    if (!result) throw Exception("Failed to print receipt");
+    bytes += generator.text('');
   }
+
+  bytes += generator.text('-----------------------------');
+
+  final total = items.fold<double>(0.0, (sum, i) => sum + i.price * i.quantity);
+
+  bytes += generator.row([
+    PosColumn(text: 'TOTAL', width: 6, styles: const PosStyles(bold: true)),
+    PosColumn(
+      text: 'Php ${total.toStringAsFixed(2)}',
+      width: 6,
+      styles: const PosStyles(align: PosAlign.right, bold: true),
+    ),
+  ]);
+
+  bytes += generator.feed(1);
+  bytes += generator.text('Thank You and Enjoy!', styles: const PosStyles(align: PosAlign.center));
+  bytes += generator.feed(2);
+
+  final result = await PrintBluetoothThermal.writeBytes(bytes);
+  if (!result) throw Exception("Failed to print receipt");
+}
+
 }

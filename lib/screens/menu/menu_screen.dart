@@ -1,6 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:cup_of_zion/data/coffee_data.dart';
 import 'package:cup_of_zion/screens/menu/coffee_detail_screen.dart';
-import 'package:flutter/material.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -15,7 +15,7 @@ class _MenuScreenState extends State<MenuScreen>
 
   @override
   void initState() {
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     super.initState();
   }
 
@@ -23,14 +23,16 @@ class _MenuScreenState extends State<MenuScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cup of Zion'),
+        title: const Text('Cup of Zion'),
         centerTitle: true,
-        // backgroundColor: Color(0xFF1B3B34),
         bottom: TabBar(
           controller: _tabController,
-          tabs: [
-            Tab(text: 'Hot Coffee'),
-            Tab(text: 'Cold Coffee'),
+          tabs: const [
+            Tab(text: 'Coffee'),
+            Tab(text: 'Non-Coffee'),
+            Tab(text: 'Fruities'),
+            Tab(text: 'Milkshake'),
+            Tab(text: 'Cake'),
           ],
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
@@ -40,92 +42,117 @@ class _MenuScreenState extends State<MenuScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [buildCoffeeGrid(hotCoffees), buildCoffeeGrid(coldCoffees)],
+        children: [
+          buildGrid('coffee'),
+          buildGrid('non-coffee'),
+          buildGrid('fruit'),
+          buildGrid('milkshake'),
+          buildGrid('cake'),
+        ],
       ),
     );
   }
+}
 
-  Widget buildCoffeeGrid(List<Map<String, String>> coffees) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: GridView.builder(
-        itemCount: coffees.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+Widget buildGrid(String type) {
+  final filtered = drinks.where((e) => e['base'] == type).toList();
+
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      double maxItemWidth = 180;
+      double screenWidth = constraints.maxWidth;
+      double itemFontSize = screenWidth < 400 ? 12 : 13;
+
+      return GridView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: filtered.length,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: maxItemWidth,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 3 / 4,
+          childAspectRatio: 3 / 4.3,
         ),
         itemBuilder: (context, index) {
-          final coffee = coffees[index];
+          final drink = filtered[index];
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CoffeeDetailScreen(coffee: coffee),
+                  builder: (_) => CoffeeDetailScreen(coffee: drink),
                 ),
               );
             },
-            child: buildCoffeeCard(coffees[index]),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget buildCoffeeCard(Map<String, String> coffee) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            child: Hero(
-              tag: coffee['name']!,
-              child: Image.asset(
-                coffee['image']!,
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.contain,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 4),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child: Hero(
+                      tag: drink['name'],
+                      child: AspectRatio(
+                        aspectRatio: 4 / 3,
+                        child: Image.asset(
+                          drink['image'],
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            drink['name'],
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: itemFontSize,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: const [
+                              Icon(Icons.star, color: Colors.amber, size: 14),
+                              SizedBox(width: 4),
+                              Text('4.5', style: TextStyle(fontSize: 11)),
+                              Spacer(),
+                              Icon(Icons.favorite_border, size: 14),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text(
+                            "Php ${drink['price']}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              coffee['name']!,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              maxLines: 2,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 16),
-                Text('4.5'),
-                Spacer(),
-                Icon(Icons.favorite_border, size: 16),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              "Php ${coffee['price']}",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+          );
+        },
+      );
+    },
+  );
 }

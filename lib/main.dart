@@ -1,9 +1,26 @@
 import 'package:cup_of_zion/screens/menu/menu_screen.dart';
 import 'package:cup_of_zion/screens/splash/splash_screen.dart';
+import 'package:cup_of_zion/services/sync_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:workmanager/workmanager.dart';
+
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    await SyncService.syncTransactions();
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+  await Workmanager().registerPeriodicTask(
+    "syncTransactionsTask",
+    "syncTransactions",
+    frequency: const Duration(minutes: 15),
+  );
   runApp(const MyApp());
 }
 
