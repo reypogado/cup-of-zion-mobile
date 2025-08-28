@@ -1,5 +1,6 @@
 import 'package:cup_of_zion/data/cart_model.dart';
 import 'package:cup_of_zion/services/bluetooth_service.dart';
+import 'package:cup_of_zion/services/sync_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/local_transaction_service.dart';
@@ -47,8 +48,10 @@ class _TransactionRecordsScreenState extends State<TransactionRecordsScreen> {
 
     setState(() {
       _transactions = data.where((tx) {
+        final deleted = (tx['deleted'] ?? 0) == 1; // ← guard
         final name = (tx['customer_name'] ?? '').toString().toLowerCase();
-        return name.contains(_searchQuery.toLowerCase());
+        final matches = name.contains(_searchQuery.toLowerCase());
+        return !deleted && matches; // ← hide if deleted
       }).toList();
     });
   }
@@ -106,21 +109,15 @@ class _TransactionRecordsScreenState extends State<TransactionRecordsScreen> {
     );
 
     if (confirm == true) {
-      final id = tx['id'];
-      await _localDb.deleteTransaction(id);
+      final id = tx['id'] as int;
 
-      if (tx['remote_id'] != null) {
-        try {
-          await FirebaseFirestore.instance
-              .collection('transactions')
-              .doc(tx['remote_id'])
-              .delete();
-        } catch (e) {
-          debugPrint("❌ Firestore deletion failed: $e");
-        }
-      }
+      // ✅ Mark for deletion and let SyncService handle remote + hard delete
+      await SyncService.requestDelete(id);
 
-      _loadTransactions();
+      // ❌ Remove this direct Firestore delete block:
+      // if (tx['remote_id'] != null) { ... }
+
+      await _loadTransactions();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

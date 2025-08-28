@@ -77,6 +77,7 @@ class _CartScreenState extends State<CartScreen> {
         items: CartState.items.map((e) => e.toJson()).toList(),
         totalPrice: CartState.totalPrice,
         status: _selectedStatus,
+        payment: _selectedPayment,
       );
 
       // Attempt to print

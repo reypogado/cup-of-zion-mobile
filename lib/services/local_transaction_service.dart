@@ -17,7 +17,7 @@ class LocalTransactionService {
 
     return await openDatabase(
       path,
-      version: 6, // ✅ bumped to version 5
+      version: 7, // 🔼 bump to 7 for `deleted` column
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE transactions (
@@ -31,7 +31,8 @@ class LocalTransactionService {
             reference_number TEXT,
             status TEXT DEFAULT 'unpaid',
             payment TEXT DEFAULT 'cash',
-            dirty INTEGER DEFAULT 0
+            dirty INTEGER DEFAULT 0,
+            deleted INTEGER DEFAULT 0
           )
         ''');
       },
@@ -43,43 +44,39 @@ class LocalTransactionService {
 
         if (oldVersion < 2) {
           if (!await columnExists('transactions', 'remote_id')) {
-            await db.execute(
-              "ALTER TABLE transactions ADD COLUMN remote_id TEXT",
-            );
+            await db.execute("ALTER TABLE transactions ADD COLUMN remote_id TEXT");
           }
         }
         if (oldVersion < 3) {
           if (!await columnExists('transactions', 'reference_number')) {
-            await db.execute(
-              "ALTER TABLE transactions ADD COLUMN reference_number TEXT",
-            );
+            await db.execute("ALTER TABLE transactions ADD COLUMN reference_number TEXT");
           }
         }
         if (oldVersion < 4) {
           if (!await columnExists('transactions', 'status')) {
-            await db.execute(
-              "ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'unpaid'",
-            );
+            await db.execute("ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'unpaid'");
           }
         }
         if (oldVersion < 5) {
           if (!await columnExists('transactions', 'dirty')) {
-            await db.execute(
-              "ALTER TABLE transactions ADD COLUMN dirty INTEGER DEFAULT 0",
-            );
+            await db.execute("ALTER TABLE transactions ADD COLUMN dirty INTEGER DEFAULT 0");
           }
         }
         if (oldVersion < 6) {
           if (!await columnExists('transactions', 'payment')) {
-            await db.execute(
-              "ALTER TABLE transactions ADD COLUMN payment TEXT DEFAULT 'cash'",
-            );
+            await db.execute("ALTER TABLE transactions ADD COLUMN payment TEXT DEFAULT 'cash'");
+          }
+        }
+        if (oldVersion < 7) {
+          if (!await columnExists('transactions', 'deleted')) {
+            await db.execute("ALTER TABLE transactions ADD COLUMN deleted INTEGER DEFAULT 0");
           }
         }
       },
     );
   }
 
+  /// Create a new local transaction (unsynced)
   Future<String> insertTransaction({
     String? customerName,
     required List<Map<String, dynamic>> items,
@@ -88,6 +85,8 @@ class LocalTransactionService {
     String payment = 'cash',
   }) async {
     final db = await database;
+
+    // lightweight unique-ish reference number
     final millis = DateTime.now().millisecondsSinceEpoch % 1000000;
     final rand = DateTime.now().microsecondsSinceEpoch % 100;
     final referenceNumber =
@@ -104,11 +103,13 @@ class LocalTransactionService {
       'status': status,
       'payment': payment,
       'dirty': 0,
+      'deleted': 0,
     });
 
     return referenceNumber;
   }
 
+  /// Update status (marks as dirty to push later)
   Future<void> updateTransactionStatus(int id, String status) async {
     final db = await database;
     await db.update(
@@ -119,6 +120,7 @@ class LocalTransactionService {
     );
   }
 
+  /// Update payment (marks as dirty to push later)
   Future<void> updateTransactionPayment(int id, String payment) async {
     final db = await database;
     await db.update(
@@ -129,16 +131,21 @@ class LocalTransactionService {
     );
   }
 
+  /// Transactions not uploaded to Firestore yet (and not deleted)
   Future<List<Map<String, dynamic>>> getUnsyncedTransactions() async {
     final db = await database;
-    return await db.query('transactions', where: 'synced = 0');
+    return await db.query(
+      'transactions',
+      where: 'synced = 0 AND deleted = 0',
+    );
   }
 
+  /// Local updates to push to Firestore (and not deleted)
   Future<List<Map<String, dynamic>>> getDirtyTransactions() async {
     final db = await database;
     return await db.query(
       'transactions',
-      where: 'dirty = 1 AND remote_id IS NOT NULL',
+      where: 'dirty = 1 AND remote_id IS NOT NULL AND deleted = 0',
     );
   }
 
@@ -162,30 +169,53 @@ class LocalTransactionService {
     );
   }
 
+  /// Query list for UI (excludes deleted)
   Future<List<Map<String, dynamic>>> getAllTransactions({
     DateTime? start,
     DateTime? end,
   }) async {
     final db = await database;
-    String? where;
-    List<dynamic>? whereArgs;
+
+    final whereClauses = <String>['deleted = 0'];
+    final whereArgs = <dynamic>[];
 
     if (start != null && end != null) {
-      where = 'created_at BETWEEN ? AND ?';
-      whereArgs = [start.toIso8601String(), end.toIso8601String()];
+      whereClauses.add('created_at BETWEEN ? AND ?');
+      whereArgs.addAll([start.toIso8601String(), end.toIso8601String()]);
     }
 
     return await db.query(
       'transactions',
-      where: where,
+      where: whereClauses.join(' AND '),
       whereArgs: whereArgs,
       orderBy: 'created_at DESC',
     );
   }
 
-  Future<void> deleteTransaction(int id) async {
+  /// Mark as deleted (to be processed by SyncService later)
+  Future<void> softDeleteTransaction(int id) async {
+    final db = await database;
+    await db.update(
+      'transactions',
+      {'deleted': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Physically remove a row (call only after remote delete succeeds)
+  Future<void> hardDeleteTransaction(int id) async {
     final db = await database;
     await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Rows marked for deletion (pending remote delete)
+  Future<List<Map<String, dynamic>>> getPendingDeletes() async {
+    final db = await database;
+    return await db.query(
+      'transactions',
+      where: 'deleted = 1',
+    );
   }
 
   Future<String?> getRemoteId(int id) async {
