@@ -14,6 +14,7 @@ class CoffeeDetailScreen extends StatefulWidget {
 
 class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
   int quantity = 1;
+  int extraShots = 0;
   String selectedTemperature = 'none';
   String selectedMilk = 'none';
   String selectedSize = 'regular';
@@ -45,19 +46,33 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
     if (quantity > 1) setState(() => quantity--);
   }
 
+  void incrementShot() => setState(() => extraShots++);
+  void decrementShot() {
+    if (extraShots > 0) setState(() => extraShots--);
+  }
+
   @override
   Widget build(BuildContext context) {
     final coffee = widget.coffee;
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final isPortrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
 
     final double basePrice = double.tryParse(coffee['price'] ?? '0') ?? 0;
-    final double addOnsPrice = selectedAddOns.fold(0, (sum, addon) => sum + addon.price);
+    final double addOnsPrice = selectedAddOns.fold(
+      0,
+      (sum, addon) => sum + addon.price,
+    );
 
     double adjustedPrice = basePrice + addOnsPrice;
     if (selectedMilk == 'oat') adjustedPrice += 20;
-    if (selectedSize == 'upsize') adjustedPrice += 30;
+    if (selectedSize == 'upsize') {
+      adjustedPrice += (coffee['base'] == 'fruit' ? 40 : 30);
+    }
+
+    adjustedPrice += extraShots * 10;
+
     final double totalPrice = quantity * adjustedPrice;
 
     return Scaffold(
@@ -89,7 +104,12 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
                   ),
                 ),
                 Expanded(
-                  child: buildDetailsContent(coffee, basePrice, adjustedPrice, totalPrice),
+                  child: buildDetailsContent(
+                    coffee,
+                    basePrice,
+                    adjustedPrice,
+                    totalPrice,
+                  ),
                 ),
               ],
             )
@@ -108,7 +128,12 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
                   ),
                 ),
                 Expanded(
-                  child: buildDetailsContent(coffee, basePrice, adjustedPrice, totalPrice),
+                  child: buildDetailsContent(
+                    coffee,
+                    basePrice,
+                    adjustedPrice,
+                    totalPrice,
+                  ),
                 ),
               ],
             ),
@@ -134,60 +159,134 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(coffee['name'],
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(
+                    coffee['name'],
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(coffee['ingredients'],
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                  Text(
+                    coffee['ingredients'],
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Description',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'Description',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 8),
-                  Text(coffee['description'],
-                      style: TextStyle(color: Colors.grey[700], height: 1.5)),
+                  Text(
+                    coffee['description'],
+                    style: TextStyle(color: Colors.grey[700], height: 1.5),
+                  ),
                   const SizedBox(height: 16),
 
                   if ((coffee['options'] as List).isNotEmpty)
-                    buildChoiceChips('Temperature:', coffee['options'], selectedTemperature,
-                        (val) => setState(() => selectedTemperature = val)),
+                    buildChoiceChips(
+                      'Temperature:',
+                      coffee['options'],
+                      selectedTemperature,
+                      (val) => setState(() => selectedTemperature = val),
+                    ),
 
                   if ((coffee['milkOptions'] as List).isNotEmpty)
-                    buildChoiceChips('Milk Option:', coffee['milkOptions'], selectedMilk,
-                        (val) => setState(() => selectedMilk = val)),
+                    buildChoiceChips(
+                      'Milk Option:',
+                      coffee['milkOptions'],
+                      selectedMilk,
+                      (val) => setState(() => selectedMilk = val),
+                    ),
 
                   if ((coffee['sizeOptions'] as List).isNotEmpty)
-                    buildChoiceChips('Size:', coffee['sizeOptions'], selectedSize,
-                        (val) => setState(() => selectedSize = val)),
+                    buildChoiceChips(
+                      'Size:',
+                      coffee['sizeOptions'],
+                      selectedSize,
+                      (val) => setState(() => selectedSize = val),
+                    ),
 
                   if ((coffee['drinkOptions'] as List?)?.isNotEmpty ?? false)
-                    buildChoiceChips('Drink Option:', coffee['drinkOptions'],
-                        selectedDrinkOption, (val) => setState(() => selectedDrinkOption = val)),
+                    buildChoiceChips(
+                      'Drink Option:',
+                      coffee['drinkOptions'],
+                      selectedDrinkOption,
+                      (val) => setState(() => selectedDrinkOption = val),
+                    ),
+
+                  Row(
+                    children: [
+                      const Text(
+                        'Extra Shots:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: decrementShot,
+                              icon: const Icon(Icons.remove),
+                              splashRadius: 18,
+                            ),
+                            Text(
+                              extraShots.toString(),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            IconButton(
+                              onPressed: incrementShot,
+                              icon: const Icon(Icons.add),
+                              splashRadius: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "(+₱10 per shot)",
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
                   if ((coffee['add_ons'] as List?)?.isNotEmpty ?? false)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Add-ons:',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Add-ons:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 12,
-                          children: (coffee['add_ons'] as List).map<Widget>((addonMap) {
+                          children: (coffee['add_ons'] as List).map<Widget>((
+                            addonMap,
+                          ) {
                             final addon = AddOn(
                               name: addonMap['name'],
                               price: (addonMap['price'] as num).toDouble(),
                             );
-                            final isSelected =
-                                selectedAddOns.any((a) => a.name == addon.name);
+                            final isSelected = selectedAddOns.any(
+                              (a) => a.name == addon.name,
+                            );
                             return FilterChip(
-                              label:
-                                  Text('${addon.name} (+${addon.price.toStringAsFixed(0)})'),
+                              label: Text(
+                                '${addon.name} (+${addon.price.toStringAsFixed(0)})',
+                              ),
                               selected: isSelected,
                               onSelected: (_) {
                                 setState(() {
                                   isSelected
                                       ? selectedAddOns.removeWhere(
-                                          (a) => a.name == addon.name)
+                                          (a) => a.name == addon.name,
+                                        )
                                       : selectedAddOns.add(addon);
                                 });
                               },
@@ -200,8 +299,10 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
 
                   Row(
                     children: [
-                      const Text('Quantity:',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Quantity:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(width: 16),
                       Container(
                         decoration: BoxDecoration(
@@ -215,8 +316,10 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
                               icon: const Icon(Icons.remove),
                               splashRadius: 18,
                             ),
-                            Text(quantity.toString(),
-                                style: const TextStyle(fontSize: 14)),
+                            Text(
+                              quantity.toString(),
+                              style: const TextStyle(fontSize: 14),
+                            ),
                             IconButton(
                               onPressed: increment,
                               icon: const Icon(Icons.add),
@@ -234,25 +337,32 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Text('Php ${totalPrice.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+              Text(
+                'Php ${totalPrice.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
               const Spacer(),
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
                   onPressed: () {
-                    CartState.addItem(CartItem(
-                      name: coffee['name'],
-                      image: coffee['image'],
-                      price: adjustedPrice,
-                      temperature: selectedTemperature,
-                      milk: selectedMilk,
-                      size: selectedSize,
-                      quantity: quantity,
-                      drinkOptions: selectedDrinkOption,
-                      addOns: selectedAddOns,
-                    ));
+                    CartState.addItem(
+                      CartItem(
+                        name: coffee['name'],
+                        image: coffee['image'],
+                        price: adjustedPrice,
+                        temperature: selectedTemperature,
+                        milk: selectedMilk,
+                        size: selectedSize,
+                        quantity: quantity,
+                        drinkOptions: selectedDrinkOption,
+                        addOns: selectedAddOns,
+                      ),
+                    );
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -271,7 +381,10 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Add to Cart', style: TextStyle(fontSize: 14)),
+                  child: const Text(
+                    'Add to Cart',
+                    style: TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ],
@@ -281,8 +394,12 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
     );
   }
 
-  Widget buildChoiceChips(String label, List options, String selectedValue,
-      void Function(String) onSelected) {
+  Widget buildChoiceChips(
+    String label,
+    List options,
+    String selectedValue,
+    void Function(String) onSelected,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
