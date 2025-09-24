@@ -15,7 +15,7 @@ class _MenuScreenState extends State<MenuScreen>
 
   @override
   void initState() {
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     super.initState();
   }
 
@@ -27,12 +27,14 @@ class _MenuScreenState extends State<MenuScreen>
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Coffee'),
             Tab(text: 'Non-Coffee'),
             Tab(text: 'Fruities'),
             Tab(text: 'Milkshake'),
             Tab(text: 'Matcha Series'),
+            Tab(text: 'Fresh Fruit'),
             Tab(text: 'Others'),
           ],
           labelColor: Colors.white,
@@ -49,6 +51,7 @@ class _MenuScreenState extends State<MenuScreen>
           buildGrid('fruit'),
           buildGrid('milkshake'),
           buildGrid('matcha-series'),
+          buildGrid('fresh-fruit'),
           buildGrid('others'),
         ],
       ),
