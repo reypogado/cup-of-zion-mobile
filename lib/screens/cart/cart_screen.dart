@@ -21,6 +21,8 @@ class _CartScreenState extends State<CartScreen> {
   String _selectedStatus = 'paid';
   String _selectedPayment = 'cash';
 
+    late final AnimationController _c;
+
   bool _isSubmitting = false;
 
   @override
@@ -75,7 +77,7 @@ class _CartScreenState extends State<CartScreen> {
       final referenceNumber = await _localDb.insertTransaction(
         customerName: customerName,
         items: CartState.items.map((e) => e.toJson()).toList(),
-        totalPrice: CartState.totalPrice,
+        totalPrice: calculateTotal(CartState.items),
         status: _selectedStatus,
         payment: _selectedPayment,
       );
@@ -119,9 +121,20 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  double calculateTotal(List<CartItem> cartItems) {
+    double tot = 0;
+    for (CartItem item in cartItems) {
+      double t = item.price * item.quantity;
+      tot += t;
+    }
+    return tot;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartItems = CartState.items;
+
+    double totalPrice = calculateTotal(cartItems);
 
     return Scaffold(
       appBar: AppBar(
@@ -202,7 +215,7 @@ class _CartScreenState extends State<CartScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        "Total: Php ${CartState.totalPrice.toStringAsFixed(2)}",
+                        "Total: Php ${totalPrice.toStringAsFixed(2)}",
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

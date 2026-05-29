@@ -28,9 +28,12 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
     if (options.isNotEmpty) selectedTemperature = options.first;
 
     final base = widget.coffee['base'];
-    if (base == 'coffee' || base == 'non-coffee') {
-      selectedMilk = 'regular';
-    }
+    // if (base == 'coffee' || base == 'non-coffee') {
+    //   selectedMilk = 'regular';
+    // }
+
+    final milkOptions = widget.coffee['milkOptions'] as List;
+    if (milkOptions.isNotEmpty) selectedMilk = milkOptions.first;
 
     final sizeOptions = widget.coffee['sizeOptions'] as List;
     if (sizeOptions.isNotEmpty) selectedSize = sizeOptions.first;
@@ -66,12 +69,26 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
     );
 
     double adjustedPrice = basePrice + addOnsPrice;
-    if (selectedMilk == 'oat') adjustedPrice += 20;
-    if (selectedSize == 'upsize') {
-      adjustedPrice += (coffee['base'] == 'fruit' ? 40 : 30);
+
+    if (coffee['name'] == 'Cafe Americano') {
+      if (selectedSize == 'regular') {
+        adjustedPrice += 20;
+      }
+      if (selectedSize == 'upsize') {
+        adjustedPrice += 25;
+      }
+      if (selectedMilk == 'none') adjustedPrice += 0;
+      if (selectedMilk == 'regular') adjustedPrice += 20;
+      if (selectedMilk == 'oat') adjustedPrice += 30;
+    } else {
+      if (selectedMilk == 'oat') adjustedPrice += 30;
+
+      if (selectedSize == 'upsize') {
+        adjustedPrice += (coffee['base'] == 'fruit' ? 20 : 20);
+      }
     }
 
-    adjustedPrice += extraShots * 10;
+    adjustedPrice += extraShots * 20;
 
     final double totalPrice = quantity * adjustedPrice;
 
@@ -248,7 +265,7 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        "(+₱10 per shot)",
+                        "(+₱20 per shot)",
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],

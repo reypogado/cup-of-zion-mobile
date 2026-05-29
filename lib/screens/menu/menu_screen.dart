@@ -15,7 +15,7 @@ class _MenuScreenState extends State<MenuScreen>
 
   @override
   void initState() {
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     super.initState();
   }
 
@@ -30,12 +30,12 @@ class _MenuScreenState extends State<MenuScreen>
           isScrollable: true,
           tabs: const [
             Tab(text: 'Coffee'),
-            Tab(text: 'Non-Coffee'),
+            // Tab(text: 'Non-Coffee'),
             Tab(text: 'Fruities'),
-            Tab(text: 'Milkshake'),
+            // Tab(text: 'Milkshake'),
             Tab(text: 'Matcha Series'),
-            Tab(text: 'Fresh Fruit'),
-            Tab(text: 'Others'),
+            // Tab(text: 'Fresh Fruit'),
+            // Tab(text: 'Others'),
           ],
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
@@ -47,12 +47,12 @@ class _MenuScreenState extends State<MenuScreen>
         controller: _tabController,
         children: [
           buildGrid('coffee'),
-          buildGrid('non-coffee'),
+          // buildGrid('non-coffee'),
           buildGrid('fruit'),
-          buildGrid('milkshake'),
+          // buildGrid('milkshake'),
           buildGrid('matcha-series'),
-          buildGrid('fresh-fruit'),
-          buildGrid('others'),
+          // buildGrid('fresh-fruit'),
+          // buildGrid('others'),
         ],
       ),
     );
@@ -75,7 +75,7 @@ Widget buildGrid(String type) {
           maxCrossAxisExtent: maxItemWidth,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 3 / 4.3,
+          childAspectRatio: 3 / 4,
         ),
         itemBuilder: (context, index) {
           final drink = filtered[index];
