@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cup_of_zion/data/coffee_data.dart';
+import 'package:cup_of_zion/data/drink_pricing.dart';
 import 'package:cup_of_zion/screens/menu/coffee_detail_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class _MenuScreenState extends State<MenuScreen>
 
   @override
   void initState() {
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     super.initState();
   }
 
@@ -30,12 +31,10 @@ class _MenuScreenState extends State<MenuScreen>
           isScrollable: true,
           tabs: const [
             Tab(text: 'Coffee'),
-            // Tab(text: 'Non-Coffee'),
-            Tab(text: 'Fruities'),
-            // Tab(text: 'Milkshake'),
             Tab(text: 'Matcha Series'),
-            // Tab(text: 'Fresh Fruit'),
-            // Tab(text: 'Others'),
+            Tab(text: 'Fruit Teas'),
+            Tab(text: 'Smoothies'),
+            Tab(text: 'Special Shakes'),
           ],
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
@@ -47,12 +46,10 @@ class _MenuScreenState extends State<MenuScreen>
         controller: _tabController,
         children: [
           buildGrid('coffee'),
-          // buildGrid('non-coffee'),
-          buildGrid('fruit'),
-          // buildGrid('milkshake'),
           buildGrid('matcha-series'),
-          // buildGrid('fresh-fruit'),
-          // buildGrid('others'),
+          buildGrid('fruit'),
+          buildGrid('smoothie'),
+          buildGrid('special-shake'),
         ],
       ),
     );
@@ -142,7 +139,7 @@ Widget buildGrid(String type) {
                           ),
                           const Spacer(),
                           Text(
-                            "Php ${drink['price']}",
+                            "Php ${drinkStartingPrice(drink).toStringAsFixed(2)}",
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,

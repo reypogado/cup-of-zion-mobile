@@ -74,6 +74,8 @@ class BluetoothPrinterService {
     if (item.temperature != 'none') tags.add(item.temperature);
     if (item.milk != 'none') tags.add(item.milk == 'oat' ? 'oat milk' : item.milk);
     if (item.size.isNotEmpty) tags.add(item.size);
+    if (item.drinkOptions.isNotEmpty) tags.add(item.drinkOptions);
+    tags.addAll(item.addOns.map((a) => a.name));
 
     if (tags.isNotEmpty) {
       itemTitle += ' (${tags.join(', ')})';

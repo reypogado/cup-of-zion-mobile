@@ -128,6 +128,65 @@ class _TransactionRecordsScreenState extends State<TransactionRecordsScreen> {
     }
   }
 
+  Future<void> _showEditField({
+    required String title,
+    required String label,
+    required String initialValue,
+    required Future<void> Function(String) onSave,
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(labelText: label),
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          maxLines: label == 'Note' ? 3 : 1,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B3B34),
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    final text = controller.text.trim();
+    // Defer dispose so Flutter's close animation and focus events finish first
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+    if (confirmed == true) {
+      await onSave(text);
+    }
+  }
+
+  /// "Cafe Latte x2 (hot, oat milk, large, 2x premium shot, Espresso Shot)"
+  String _describeItem(Map<String, dynamic> item) {
+    final tags = <String>[
+      if ((item['temperature'] ?? '').toString().isNotEmpty &&
+          item['temperature'] != 'none')
+        item['temperature'].toString(),
+      if ((item['milk'] ?? '').toString().isNotEmpty && item['milk'] != 'none')
+        '${item['milk']} milk',
+      if ((item['size'] ?? '').toString().isNotEmpty) item['size'].toString(),
+      if ((item['drinkOptions'] ?? '').toString().isNotEmpty)
+        item['drinkOptions'].toString(),
+      ...((item['addOns'] as List?) ?? []).map((a) => (a['name'] ?? '').toString()),
+    ];
+
+    final title = "${item['name']} x${item['quantity']}";
+    return tags.isEmpty ? title : "$title (${tags.join(', ')})";
+  }
+
   void _showTransactionDetails(Map<String, dynamic> tx) {
     final items = List<Map<String, dynamic>>.from(jsonDecode(tx['items']));
     final printerService = BluetoothPrinterService();
@@ -142,15 +201,20 @@ class _TransactionRecordsScreenState extends State<TransactionRecordsScreen> {
             children: [
               Text("Customer: ${tx['customer_name'] ?? 'N/A'}"),
               const SizedBox(height: 8),
+              if ((tx['note'] ?? '').toString().isNotEmpty) ...[
+                Text(
+                  "Note: ${tx['note']}",
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
+                const SizedBox(height: 8),
+              ],
               Text("Total: Php ${tx['total_price']}"),
               const SizedBox(height: 8),
               Text("Status: ${tx['status'] ?? ''}"),
               const SizedBox(height: 8),
               const Text("Items:"),
               ...items.map(
-                (item) => Text(
-                  "• ${item['name']} x${item['quantity']} (${item['temperature']}, ${item['milk']}, ${item['size']})",
-                ),
+                (item) => Text("• ${_describeItem(item)}"),
               ),
             ],
           ),
@@ -159,6 +223,40 @@ class _TransactionRecordsScreenState extends State<TransactionRecordsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Close"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _showEditField(
+                title: 'Edit Customer Name',
+                label: 'Customer Name',
+                initialValue: tx['customer_name'] ?? '',
+                onSave: (value) async {
+                  await _localDb.updateTransactionCustomerName(tx['id'], value);
+                  _loadTransactions();
+                },
+              );
+            },
+            child: const Text("Edit Name"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _showEditField(
+                title: (tx['note'] ?? '').toString().isEmpty
+                    ? 'Add Note'
+                    : 'Edit Note',
+                label: 'Note',
+                initialValue: tx['note'] ?? '',
+                onSave: (value) async {
+                  await _localDb.updateTransactionNote(tx['id'], value);
+                  _loadTransactions();
+                },
+              );
+            },
+            child: Text(
+              (tx['note'] ?? '').toString().isEmpty ? 'Add Note' : 'Edit Note',
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -347,6 +445,16 @@ class _TransactionRecordsScreenState extends State<TransactionRecordsScreen> {
                             children: [
                               Text("Total: Php ${tx['total_price']}"),
                               Text("Date: $date"),
+                              if ((tx['note'] ?? '').toString().isNotEmpty)
+                                Text(
+                                  "Note: ${tx['note']}",
+                                  style: const TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 12,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                             ],
                           ),
                           trailing: Row(

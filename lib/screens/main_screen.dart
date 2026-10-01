@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cup_of_zion/screens/pending_orders/pending_orders_screen.dart';
 import 'package:cup_of_zion/screens/transaction_records/transaction_records_screen.dart';
 import 'package:cup_of_zion/services/sync_service.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const MenuScreen(),
     const CartScreen(),
+    const PendingOrdersScreen(),
     const TransactionRecordsScreen(),
     const SettingsScreen(),
   ];
@@ -49,6 +51,8 @@ class _MainScreenState extends State<MainScreen> {
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
+        // 5 destinations — keep every label visible instead of shifting.
+        type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(0xFF1B3B34),
         unselectedItemColor: Colors.grey,
         onTap: (index) {
@@ -64,6 +68,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart_outlined),
             label: 'Cart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.pending_actions_outlined),
+            label: 'Pending',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.my_library_books_rounded),

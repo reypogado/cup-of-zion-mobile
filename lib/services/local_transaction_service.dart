@@ -17,7 +17,7 @@ class LocalTransactionService {
 
     return await openDatabase(
       path,
-      version: 7, // 🔼 bump to 7 for `deleted` column
+      version: 8,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE transactions (
@@ -32,7 +32,8 @@ class LocalTransactionService {
             status TEXT DEFAULT 'unpaid',
             payment TEXT DEFAULT 'cash',
             dirty INTEGER DEFAULT 0,
-            deleted INTEGER DEFAULT 0
+            deleted INTEGER DEFAULT 0,
+            note TEXT
           )
         ''');
       },
@@ -72,31 +73,42 @@ class LocalTransactionService {
             await db.execute("ALTER TABLE transactions ADD COLUMN deleted INTEGER DEFAULT 0");
           }
         }
+        if (oldVersion < 8) {
+          if (!await columnExists('transactions', 'note')) {
+            await db.execute("ALTER TABLE transactions ADD COLUMN note TEXT");
+          }
+        }
       },
     );
   }
 
   /// Create a new local transaction (unsynced)
+  ///
+  /// [reference] and [createdAt] let a caller carry over an identity that was
+  /// minted elsewhere (e.g. a web pending order's COZ- reference).
   Future<String> insertTransaction({
     String? customerName,
     required List<Map<String, dynamic>> items,
     required double totalPrice,
     String status = 'unpaid',
     String payment = 'cash',
+    String? reference,
+    DateTime? createdAt,
   }) async {
     final db = await database;
 
     // lightweight unique-ish reference number
     final millis = DateTime.now().millisecondsSinceEpoch % 1000000;
     final rand = DateTime.now().microsecondsSinceEpoch % 100;
-    final referenceNumber =
-        'REF${millis.toString().padLeft(6, '0')}${rand.toString().padLeft(2, '0')}';
+    final referenceNumber = (reference != null && reference.isNotEmpty)
+        ? reference
+        : 'REF${millis.toString().padLeft(6, '0')}${rand.toString().padLeft(2, '0')}';
 
     await db.insert('transactions', {
       'customer_name': customerName,
       'items': jsonEncode(items),
       'total_price': totalPrice,
-      'created_at': DateTime.now().toIso8601String(),
+      'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
       'synced': 0,
       'remote_id': null,
       'reference_number': referenceNumber,
@@ -115,6 +127,26 @@ class LocalTransactionService {
     await db.update(
       'transactions',
       {'status': status, 'dirty': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> updateTransactionCustomerName(int id, String name) async {
+    final db = await database;
+    await db.update(
+      'transactions',
+      {'customer_name': name, 'dirty': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> updateTransactionNote(int id, String note) async {
+    final db = await database;
+    await db.update(
+      'transactions',
+      {'note': note, 'dirty': 1},
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -207,6 +239,17 @@ class LocalTransactionService {
   Future<void> hardDeleteTransaction(int id) async {
     final db = await database;
     await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Physically remove a row by its reference number — used to roll back an
+  /// insert that could not be completed (see PendingOrdersService.complete).
+  Future<void> hardDeleteByReference(String reference) async {
+    final db = await database;
+    await db.delete(
+      'transactions',
+      where: 'reference_number = ?',
+      whereArgs: [reference],
+    );
   }
 
   /// Rows marked for deletion (pending remote delete)

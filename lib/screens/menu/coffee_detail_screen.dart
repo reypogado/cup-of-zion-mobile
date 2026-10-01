@@ -1,6 +1,7 @@
 import 'package:cup_of_zion/data/add_on_model.dart';
 import 'package:flutter/material.dart';
 import '../../data/cart_model.dart';
+import '../../data/drink_pricing.dart';
 import '../../state/cart_state.dart';
 
 class CoffeeDetailScreen extends StatefulWidget {
@@ -54,6 +55,16 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
     if (extraShots > 0) setState(() => extraShots--);
   }
 
+  /// Everything that isn't temperature/milk/size, as one note the barista sees.
+  /// Extra shots ride along here — the same field the web app writes them to.
+  String get drinkOptionsNote {
+    final parts = <String>[
+      if (selectedDrinkOption.isNotEmpty) selectedDrinkOption,
+      if (extraShots > 0) '${extraShots}x premium shot',
+    ];
+    return parts.join(', ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final coffee = widget.coffee;
@@ -68,27 +79,13 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
       (sum, addon) => sum + addon.price,
     );
 
-    double adjustedPrice = basePrice + addOnsPrice;
-
-    if (coffee['name'] == 'Cafe Americano') {
-      if (selectedSize == 'regular') {
-        adjustedPrice += 20;
-      }
-      if (selectedSize == 'upsize') {
-        adjustedPrice += 25;
-      }
-      if (selectedMilk == 'none') adjustedPrice += 0;
-      if (selectedMilk == 'regular') adjustedPrice += 20;
-      if (selectedMilk == 'oat') adjustedPrice += 30;
-    } else {
-      if (selectedMilk == 'oat') adjustedPrice += 30;
-
-      if (selectedSize == 'upsize') {
-        adjustedPrice += (coffee['base'] == 'fruit' ? 20 : 20);
-      }
-    }
-
-    adjustedPrice += extraShots * 20;
+    final double adjustedPrice = drinkUnitPrice(
+      coffee,
+      milk: selectedMilk,
+      size: selectedSize,
+      extraShots: extraShots,
+      addOnsPrice: addOnsPrice,
+    );
 
     final double totalPrice = quantity * adjustedPrice;
 
@@ -232,44 +229,45 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
                       (val) => setState(() => selectedDrinkOption = val),
                     ),
 
-                  Row(
-                    children: [
-                      const Text(
-                        'Extra Shots:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(width: 16),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
+                  if (coffee['base'] == 'coffee' || coffee['base'] == 'matcha-series')
+                    Row(
+                      children: [
+                        const Text(
+                          'Extra Shots:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              onPressed: decrementShot,
-                              icon: const Icon(Icons.remove),
-                              splashRadius: 18,
-                            ),
-                            Text(
-                              extraShots.toString(),
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            IconButton(
-                              onPressed: incrementShot,
-                              icon: const Icon(Icons.add),
-                              splashRadius: 18,
-                            ),
-                          ],
+                        const SizedBox(width: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                onPressed: decrementShot,
+                                icon: const Icon(Icons.remove),
+                                splashRadius: 18,
+                              ),
+                              Text(
+                                extraShots.toString(),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              IconButton(
+                                onPressed: incrementShot,
+                                icon: const Icon(Icons.add),
+                                splashRadius: 18,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "(+₱20 per shot)",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "(+₱30 per shot)",
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 16),
 
                   if ((coffee['add_ons'] as List?)?.isNotEmpty ?? false)
@@ -376,7 +374,7 @@ class _CoffeeDetailScreenState extends State<CoffeeDetailScreen> {
                         milk: selectedMilk,
                         size: selectedSize,
                         quantity: quantity,
-                        drinkOptions: selectedDrinkOption,
+                        drinkOptions: drinkOptionsNote,
                         addOns: selectedAddOns,
                       ),
                     );
