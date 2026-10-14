@@ -255,7 +255,7 @@ final List<Map<String, dynamic>> drinks = [
   {
     "name": "Hibiscus Calamansi",
     "image": "assets/drinks/Hibiscus Calamansi.png",
-    "price": "45.00",
+    "price": "55.00",
     "base": "fruit",
     "options": ["cold"],
     "milkOptions": [],

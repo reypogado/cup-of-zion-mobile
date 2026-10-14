@@ -12,12 +12,12 @@ double drinkUnitPrice(
 
   if (milk == 'oat') price += 30;
 
-  // Fruit teas: Small ₱45 / Medium ₱60 (+15) / Large ₱80 (+35)
+  // Fruit teas: Small ₱45 / Medium ₱60 (+15) / Large ₱90 (+45)
   // All other categories: Medium +₱20, Large +₱40
   if (size == 'medium') {
     price += base == 'fruit' ? 15 : 20;
   } else if (size == 'large') {
-    price += base == 'fruit' ? 35 : 40;
+    price += base == 'fruit' ? 45 : 40;
   }
 
   // All beans are premium — the premium rates below are the only rates.
